@@ -1,0 +1,66 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+#define BUFFER_SIZE 100
+
+// Function to check if a string is a valid float
+int is_valid_float(const char *str) {
+    char *endptr;
+    // Convert string to double using strtod
+    strtod(str, &endptr);
+    // Check if the entire string was consumed and no extra characters are present
+    return (*endptr == '\0' && endptr != str);
+}
+
+int main() {
+    FILE *sourceFile, *destFile;
+    char buffer[BUFFER_SIZE];
+    int invalidCount = 0;
+    int validCount = 0;
+
+    // Open source file in read mode
+    sourceFile = fopen("data.txt", "r");
+    if (sourceFile == NULL) {
+        printf("Error: Could not open source file.\n");
+        return 1;
+    }
+
+    // Open destination file in write mode
+    destFile = fopen("valid_data.txt", "w");
+    if (destFile == NULL) {
+        printf("Error: Could not open destination file.\n");
+        fclose(sourceFile);
+        return 1;
+    }
+
+    // Read and process the source file token by token
+    while (fscanf(sourceFile, "%s", buffer) != EOF) {
+        if (is_valid_float(buffer)) {
+            // Write valid float to the destination file
+            fprintf(destFile, "%s\n", buffer);
+            validCount++;
+        } else {
+            // Count invalid entries
+            invalidCount++;
+        }
+    }
+
+    // Check for any file errors
+    if (ferror(sourceFile)) {
+        printf("Error: Problem reading source file.\n");
+    }
+    if (ferror(destFile)) {
+        printf("Error: Problem writing to destination file.\n");
+    }
+
+    // Close both files
+    fclose(sourceFile);
+    fclose(destFile);
+
+    // Display results
+    printf("Processing complete.\n");
+    printf("Valid floats: %d\n", validCount);
+    printf("Invalid entries: %d\n", invalidCount);
+
+    return 0;
+}
