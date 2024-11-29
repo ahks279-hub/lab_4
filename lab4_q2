@@ -1,0 +1,155 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Function prototypes
+int readPGMText(const char *filename, int *width, int *height, int *maxGray, unsigned char **pixels);
+int writePGMText(const char *filename, int width, int height, int maxGray, unsigned char *pixels);
+int writePGMBinary(const char *filename, int width, int height, int maxGray, unsigned char *pixels);
+void embedLSB(unsigned char *coverPixels, unsigned char *secretPixels, unsigned char *stegoPixels, int size);
+void extractLSB(unsigned char *stegoPixels, unsigned char *coverPixels, unsigned char *secretPixels, int size);
+
+int main() {
+    int width, height, maxGray;
+    unsigned char *coverPixels = NULL, *secretPixels = NULL, *stegoPixels = NULL;
+    unsigned char *extractedCoverPixels = NULL, *extractedSecretPixels = NULL;
+
+    // Read cover image
+    if (readPGMText("baboon.pgm", &width, &height, &maxGray, &coverPixels) != 0) {
+        printf("Error reading cover image.\n");
+        return 1;
+    }
+
+    // Read secret image
+    if (readPGMText("farm.pgm", &width, &height, &maxGray, &secretPixels) != 0) {
+        printf("Error reading secret image.\n");
+        free(coverPixels);
+        return 1;
+    }
+
+    int imageSize = width * height;
+
+    // Allocate memory for stego and extracted images
+    stegoPixels = (unsigned char *)malloc(imageSize * sizeof(unsigned char));
+    extractedCoverPixels = (unsigned char *)malloc(imageSize * sizeof(unsigned char));
+    extractedSecretPixels = (unsigned char *)malloc(imageSize * sizeof(unsigned char));
+
+    if (!stegoPixels || !extractedCoverPixels || !extractedSecretPixels) {
+        printf("Memory allocation failed.\n");
+        free(coverPixels);
+        free(secretPixels);
+        return 1;
+    }
+
+    // Embed the secret image into the cover image
+    embedLSB(coverPixels, secretPixels, stegoPixels, imageSize);
+
+    // Write stego image in binary format
+    if (writePGMBinary("stego_image_bin.pgm", width, height, maxGray, stegoPixels) != 0) {
+        printf("Error writing stego image.\n");
+    }
+
+    // Extract cover and secret images from the stego image
+    extractLSB(stegoPixels, extractedCoverPixels, extractedSecretPixels, imageSize);
+
+    // Write extracted secret image in text format
+    if (writePGMText("extracted_secret.pgm", width, height, maxGray, extractedSecretPixels) != 0) {
+        printf("Error writing extracted secret image.\n");
+    }
+
+    // Free all dynamically allocated memory
+    free(coverPixels);
+    free(secretPixels);
+    free(stegoPixels);
+    free(extractedCoverPixels);
+    free(extractedSecretPixels);
+
+    return 0;
+}
+
+// Function to read an ASCII PGM file
+int readPGMText(const char *filename, int *width, int *height, int *maxGray, unsigned char **pixels) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        printf("Error opening file: %s\n", filename);
+        return 1;
+    }
+
+    char format[3];
+    fscanf(file, "%2s", format);
+    if (strcmp(format, "P2") != 0) {
+        printf("Unsupported file format: %s\n", format);
+        fclose(file);
+        return 1;
+    }
+
+    fscanf(file, "%d %d %d", width, height, maxGray);
+
+    int size = (*width) * (*height);
+    *pixels = (unsigned char *)malloc(size * sizeof(unsigned char));
+    if (!*pixels) {
+        printf("Memory allocation failed for pixels.\n");
+        fclose(file);
+        return 1;
+    }
+
+    for (int i = 0; i < size; i++) {
+        int pixel;
+        fscanf(file, "%d", &pixel);
+        (*pixels)[i] = (unsigned char)pixel;
+    }
+
+    fclose(file);
+    return 0;
+}
+
+// Function to write an ASCII PGM file
+int writePGMText(const char *filename, int width, int height, int maxGray, unsigned char *pixels) {
+    FILE *file = fopen(filename, "w");
+    if (!file) {
+        printf("Error opening file: %s\n", filename);
+        return 1;
+    }
+
+    fprintf(file, "P2\n%d %d\n%d\n", width, height, maxGray);
+
+    int size = width * height;
+    for (int i = 0; i < size; i++) {
+        fprintf(file, "%d\n", pixels[i]);
+    }
+
+    fclose(file);
+    return 0;
+}
+
+// Function to write a binary PGM file
+int writePGMBinary(const char *filename, int width, int height, int maxGray, unsigned char *pixels) {
+    FILE *file = fopen(filename, "wb");
+    if (!file) {
+        printf("Error opening file: %s\n", filename);
+        return 1;
+    }
+
+    fprintf(file, "P5\n%d %d\n%d\n", width, height, maxGray);
+    fwrite(pixels, sizeof(unsigned char), width * height, file);
+
+    fclose(file);
+    return 0;
+}
+
+// Function to embed secret image into cover image
+void embedLSB(unsigned char *coverPixels, unsigned char *secretPixels, unsigned char *stegoPixels, int size) {
+    for (int i = 0; i < size; i++) {
+        unsigned char coverPart = coverPixels[i] & 0xF0;         // Keep upper 4 bits of cover pixel
+        unsigned char secretPart = (secretPixels[i] >> 4) & 0x0F; // Extract upper 4 bits of secret pixel
+        stegoPixels[i] = coverPart | secretPart;                // Combine them
+    }
+}
+
+// Function to extract cover and secret images from stego image
+void extractLSB(unsigned char *stegoPixels, unsigned char *coverPixels, unsigned char *secretPixels, int size) {
+    for (int i = 0; i < size; i++) {
+        coverPixels[i] = stegoPixels[i] & 0xF0;                 // Extract upper 4 bits for cover image
+        secretPixels[i] = (stegoPixels[i] & 0x0F) << 4;         // Extract lower 4 bits and shift left for secret image
+    }
+}
