@@ -1,0 +1,42 @@
+#include<iostream>
+#include<iomanip>
+#include <cstdlib> 
+using namespace std;
+
+void print_real(float number, int fieldspace, int precision);
+
+template <typename T>
+void update_scale(T& m1, T& m2, T m3 = 10) {
+    T original_m1 = m1;
+    T original_m2 = m2;
+
+    // Output for debugging purposes
+    cout << "Before update: m1 = " << original_m1 << ", m2 = " << original_m2 << endl;
+
+    m1 = (original_m1 + original_m2) * m3;
+    m2 = (original_m1 - original_m2) * m3;
+
+    // Output the updated values
+    cout << "After update: m1 = " << m1 << ", m2 = " << m2 << endl;
+}
+
+void print_real(float number, int fieldspace, int precision) {
+    cout << fixed << setw(fieldspace) << setprecision(precision) << number << endl;
+}
+
+int main(void) {
+    float a, b;
+    cout << "Please input two real numbers: ";
+    cin >> a >> b;    
+
+    // Print the original values of a and b
+    print_real(a, 7, 3);
+    print_real(b, 7, 3);
+
+    // Call the update_scale function
+    update_scale(a, b);
+
+    // Print the updated values of a and b
+    print_real(a, 7, 3);
+    print_real(b, 7, 3);
+}
